@@ -1,0 +1,11 @@
+# Makes it ignore the files created by the Makefile
+.tmp_versions/
+
+# Files created by the Makefile
+*.order
+*~
+*.ko
+*.mod.c
+*.o
+*.symvers
+*.cmd
