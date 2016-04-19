@@ -2,9 +2,13 @@
 #include <linux/kernel.h>	//Needed for KERN_INFO
 #include <linux/init.h>		//Gives us __init & __exit
 #include <linux/fs.h>		//Gives us file_operations
+#include <linux/device.h>         // Header to support the kernel Driver Model
 #include <asm/uaccess.h>		//Gives us put_user
+
 #define DRIVER_AUTHOR "Jacob [Cassagnol & Crandal]"
 #define DRIVER_DESC   "Assignment 5 character device driver"
+#define DEVICE_NAME "char_driver"
+#define CLASS_NAME "char_class"
 
 #define MAX_MEMORY 2048
 
@@ -31,6 +35,10 @@ static int  front = 0;
 static int  back = 0;
 // Keep track of number of times device is open to allow for correct cleanup.
 static int deviceUser = 0;
+//Stores the automatic device number
+static int majorNumber;  
+static struct class* charClass = NULL;
+static struct device* charDevice = NULL;
 
 /// @brief file_operations links our functions to the system calls.
 static struct file_operations fops = {
@@ -43,17 +51,41 @@ static struct file_operations fops = {
 /// @brief Initialization component for the character driver.
 static int __init char_driver_init (void) {
 	printk(KERN_INFO "Installing module.\n");
+	
+	//Temporary code to remove an error : DELETE ME
 	queue[0] = 'a';
 	printk(KERN_INFO "Using queue, front, and back to remove error.\n%c %d %d\n", queue[0], front, back);
+	//use error using
+	size_queue();
+	insert_queue("a",0);
+	remove_queue("a",0);
+
+	majorNumber = register_chrdev(0,DEVICE_NAME, &fops);
+        if(majorNumber < 0){
+                printk(KERN_ALERT "%s : Failed to register a major number\n",DEVICE_NAME);
+                return majorNumber;
+        }
+	
+	charClass = class_create(THIS_MODULE, CLASS_NAME);
+	//TODO: Error checking here
+	charDevice = device_create(charClass,NULL, MKDEV(majorNumber,0),NULL,DEVICE_NAME);
+	//TODO:Error checking here
+
+        printk(KERN_INFO "%s : Installed correctly with major number : %d\n",DEVICE_NAME, majorNumber);
 	return 0;
 }
 
 /// @brief When the character driver is unloaded, this gets called.
 static void __exit char_driver_exit (void) {
 	printk(KERN_INFO "Removing module.\n");
+	
+	device_destroy(charClass,MKDEV(majorNumber,0));
+	class_unregister(charClass);
+	class_destroy(charClass);
+	unregister_chrdev(majorNumber, DEVICE_NAME);
 
 	// TODO: Fix this. Should be check_put or something like that.
-	if (deviceUser != 0)
+	if (deviceUser < 0)
 	{
 		printk(KERN_INFO "ERROR: Already have an open connection with char driver. FAILED.\n");
 	}
@@ -113,14 +145,25 @@ static int remove_queue(char* vals, int vals_len)
 /// @brief
 static ssize_t char_driver_read(struct file * filp, char * bufIn, size_t lenIn, loff_t * offset)
 {
+	
 	printk(KERN_INFO "Reading char driver.\n");
+
+	//TODO: Reading - i tested this shortly but am not sure it's right and want to test better
+	remove_queue(bufIn,lenIn);
+	//TODO:Error checking
+
 	return 0;
 }
 
 /// @brief
 static ssize_t char_driver_write(struct file * filp, const char * bufOut, size_t lenOut, loff_t * offset)
 {
+	
 	printk(KERN_INFO "Writing char driver.\n");
+
+	//Not sure if this is right did not test thoroughly
+	//TODO: Writing - i tested this shortly but am not sure it's right and want to test better
+	insert_queue(bufOut,lenOut);
 	return 0;
 }
 
@@ -134,6 +177,8 @@ static int char_driver_open(struct inode * inNode, struct file * filp)
 		return -EBUSY;
 	}
 	deviceUser = 1;
+	//increments the usage count - not sure i understand this bit is why it's commented out but wanted to consider it
+	//try_module_get(THIS_MODULE);
 	return 0;
 }
 
@@ -142,6 +187,8 @@ static int char_driver_release(struct inode * inNode, struct file * filp)
 {
 	printk(KERN_INFO "Releasing char driver.\n");
 	deviceUser = 0;
+	//decrements the usage count - not sure i understand this bit is why it's commented out but wanted to consider it
+	//module_put(THIS_MODULE);
 	return 0;
 }
 
