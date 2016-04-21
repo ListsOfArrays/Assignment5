@@ -25,8 +25,7 @@ static ssize_t char_driver_write(struct file *, const char *, size_t, loff_t *);
 static int char_driver_open(struct inode *, struct file *);
 static int char_driver_release(struct inode *, struct file *);
 
-static int size_queue(void);
-static int insert_queue(char* vals, int vals_len);
+static int insert_queue(const char* vals, int vals_len);
 static int remove_queue(char* vals, int vals_len);
 
 // Our queue, statically allocated.
@@ -52,13 +51,6 @@ static struct file_operations fops = {
 static int __init char_driver_init (void) {
 	printk(KERN_INFO "Installing module.\n");
 	
-	//Temporary code to remove an error : DELETE ME
-	queue[0] = 'a';
-	printk(KERN_INFO "Using queue, front, and back to remove error.\n%c %d %d\n", queue[0], front, back);
-	//use error using
-	size_queue();
-	insert_queue("a",0);
-	remove_queue("a",0);
 
 	majorNumber = register_chrdev(0,DEVICE_NAME, &fops);
         if(majorNumber < 0){
@@ -91,17 +83,10 @@ static void __exit char_driver_exit (void) {
 	}
 }
 
-/// @brief Returns the current size of the queue.
-static int size_queue(void)
-{
-	if (back < front)
-		return back + MAX_MEMORY - front;
-	return back - front;
-}
 
 /// @brief   Safely inserts items from vals into the queue.
 /// @returns Returns count of bytes read into queue.
-static int insert_queue(char* vals, int vals_len)
+static int insert_queue(const char* vals, int vals_len)
 {
 	int bytes_read = 0;
 
@@ -148,11 +133,9 @@ static ssize_t char_driver_read(struct file * filp, char * bufIn, size_t lenIn, 
 	
 	printk(KERN_INFO "Reading char driver.\n");
 
-	//TODO: Reading - i tested this shortly but am not sure it's right and want to test better
-	remove_queue(bufIn,lenIn);
-	//TODO:Error checking
+	//TODO: Could test this more
+	return remove_queue(bufIn,lenIn);
 
-	return 0;
 }
 
 /// @brief
@@ -161,10 +144,8 @@ static ssize_t char_driver_write(struct file * filp, const char * bufOut, size_t
 	
 	printk(KERN_INFO "Writing char driver.\n");
 
-	//Not sure if this is right did not test thoroughly
-	//TODO: Writing - i tested this shortly but am not sure it's right and want to test better
-	insert_queue(bufOut,lenOut);
-	return 0;
+	//TODO: Could test this more
+	return insert_queue(bufOut,lenOut);
 }
 
 /// @brief
@@ -178,7 +159,7 @@ static int char_driver_open(struct inode * inNode, struct file * filp)
 	}
 	deviceUser = 1;
 	//increments the usage count - not sure i understand this bit is why it's commented out but wanted to consider it
-	//try_module_get(THIS_MODULE);
+	try_module_get(THIS_MODULE);
 	return 0;
 }
 
@@ -188,7 +169,7 @@ static int char_driver_release(struct inode * inNode, struct file * filp)
 	printk(KERN_INFO "Releasing char driver.\n");
 	deviceUser = 0;
 	//decrements the usage count - not sure i understand this bit is why it's commented out but wanted to consider it
-	//module_put(THIS_MODULE);
+	module_put(THIS_MODULE);
 	return 0;
 }
 
