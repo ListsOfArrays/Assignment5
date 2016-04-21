@@ -75,12 +75,6 @@ static void __exit char_driver_exit (void) {
 	class_unregister(charClass);
 	class_destroy(charClass);
 	unregister_chrdev(majorNumber, DEVICE_NAME);
-
-	// TODO: Fix this. Should be check_put or something like that.
-	if (deviceUser < 0)
-	{
-		printk(KERN_INFO "ERROR: Already have an open connection with char driver. FAILED.\n");
-	}
 }
 
 
@@ -130,25 +124,20 @@ static int remove_queue(char* vals, int vals_len)
 /// @brief
 static ssize_t char_driver_read(struct file * filp, char * bufIn, size_t lenIn, loff_t * offset)
 {
-	
 	printk(KERN_INFO "Reading char driver.\n");
 
-	//TODO: Could test this more
 	return remove_queue(bufIn,lenIn);
-
 }
 
-/// @brief
+/// @brief used when device is written to.
 static ssize_t char_driver_write(struct file * filp, const char * bufOut, size_t lenOut, loff_t * offset)
 {
-	
 	printk(KERN_INFO "Writing char driver.\n");
 
-	//TODO: Could test this more
 	return insert_queue(bufOut,lenOut);
 }
 
-/// @brief
+/// @brief used when device is opened.
 static int char_driver_open(struct inode * inNode, struct file * filp)
 {
 	printk(KERN_INFO "Opening char driver.\n");
@@ -158,17 +147,17 @@ static int char_driver_open(struct inode * inNode, struct file * filp)
 		return -EBUSY;
 	}
 	deviceUser = 1;
-	//increments the usage count - not sure i understand this bit is why it's commented out but wanted to consider it
+	//increments the usage count if possible;
 	try_module_get(THIS_MODULE);
 	return 0;
 }
 
-/// @brief
+/// @brief used when device is closed.
 static int char_driver_release(struct inode * inNode, struct file * filp)
 {
 	printk(KERN_INFO "Releasing char driver.\n");
 	deviceUser = 0;
-	//decrements the usage count - not sure i understand this bit is why it's commented out but wanted to consider it
+	//decrements the usage count if possible;
 	module_put(THIS_MODULE);
 	return 0;
 }
