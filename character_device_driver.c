@@ -59,9 +59,20 @@ static int __init char_driver_init (void) {
         }
 	
 	charClass = class_create(THIS_MODULE, CLASS_NAME);
-	//TODO: Error checking here
+	if(IS_ERR(charClass)){
+		unregister_chrdev(majorNumber,DEVICE_NAME);
+		printk(KERN_ALERT "Could not create the class. Init aborted.\n");
+		return PTR_ERR(charClass);
+	}
+	
 	charDevice = device_create(charClass,NULL, MKDEV(majorNumber,0),NULL,DEVICE_NAME);
-	//TODO:Error checking here
+	if(IS_ERR(charDevice)){
+		class_destroy(charClass);
+		unregister_chrdev(majorNumber,DEVICE_NAME);
+		printk(KERN_ALERT "Could not create the device. Init aborted.\n");
+		return PTR_ERR(charDevice);
+	}
+	
 
         printk(KERN_INFO "%s : Installed correctly with major number : %d\n",DEVICE_NAME, majorNumber);
 	return 0;
